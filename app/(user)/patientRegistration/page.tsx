@@ -83,7 +83,7 @@ const PatientRegistration: React.FC = () => {
               <label className="block text-gray-700 font-semibold mb-1">
                 Patient Address
               </label>
-              <Input type="text" placeholder="Code" className="border-gray-300" />
+              <Input type="text" placeholder="Patient Address" className="border-gray-300" />
             </div>
           </div>
 

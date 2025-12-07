@@ -6,6 +6,8 @@ import { connectionToDB } from "@/lib/db";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+// JWT_SECRET= abcdefghjklmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ
+
 export async function POST(request: NextRequest) {
   try {
     await connectionToDB();
