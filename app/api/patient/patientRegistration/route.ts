@@ -110,31 +110,35 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     
     const query: any = {};
+    const andConditions: any[] = [];
     
     // Filter by status if provided
     if (status.trim()) {
-      // For pending status, include both "Pending" and patients without status (null/undefined)
       if (status === 'Pending') {
-        query.$or = [
-          { status: 'Pending' },
-          { status: { $exists: false } },
-          { status: null },
-          { status: '' }
-        ];
+        andConditions.push({
+          $or: [
+            { status: 'Pending' },
+            { status: { $exists: false } },
+            { status: null },
+            { status: '' }
+          ]
+        });
       } else {
-        query.status = status;
+        andConditions.push({ status });
       }
     }
     
     // General search across multiple fields
     if (search.trim()) {
-      query.$or = [
-        { patientname: { $regex: search, $options: 'i' } },
-        { cnic: { $regex: search, $options: 'i' } },
-        { patientEmail: { $regex: search, $options: 'i' } },
-        { doctorName: { $regex: search, $options: 'i' } },
-        { patientMobile: { $regex: search, $options: 'i' } }
-      ];
+      andConditions.push({
+        $or: [
+          { patientname: { $regex: search, $options: 'i' } },
+          { cnic: { $regex: search, $options: 'i' } },
+          { patientEmail: { $regex: search, $options: 'i' } },
+          { doctorName: { $regex: search, $options: 'i' } },
+          { patientMobile: { $regex: search, $options: 'i' } }
+        ]
+      });
     }
     
     // Individual field filters (more specific)
@@ -171,6 +175,11 @@ export async function GET(request: NextRequest) {
         toDate.setHours(23, 59, 59, 999);
         query.createdAt.$lte = toDate;
       }
+    }
+    
+    // Combine all conditions
+    if (andConditions.length > 0) {
+      query.$and = andConditions;
     }
     
     // Calculate skip for pagination
