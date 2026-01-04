@@ -7,7 +7,7 @@ import Counter from "@/models/counter";
 // Define interfaces for better type safety
 interface QueryConditions {
   [key: string]: unknown;
-  $or?: Array<{ [key: string]: RegExp | { $regex: string; $options: string } }>;
+  $or?: Array<Record<string, unknown>>;
   $and?: QueryConditions[];
   createdAt?: {
     $gte?: Date;
