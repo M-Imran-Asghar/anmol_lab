@@ -4,7 +4,46 @@ import { useState } from "react";
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
 
-const TEST_DB = [
+// Define interfaces
+interface TestItem {
+  code: string;
+  name: string;
+  price: number;
+  sample: string;
+}
+
+interface FormData {
+  patientname: string;
+  fatherOrHusbandName: string;
+  cnic: string;
+  patientMobile: string;
+  patientEmail: string;
+  patientAddress: string;
+  pateintAge: string;
+  years_month_day: string;
+  gender: string;
+  bloodGroup: string;
+  doctorName: string;
+}
+
+interface PatientData {
+  patientId: string;
+  patientname: string;
+  fatherOrHusbandName: string;
+  pateintAge: string;
+  years_month_day: string;
+  gender: string;
+  bloodGroup: string;
+  patientMobile: string;
+  patientEmail: string;
+  patientAddress: string;
+  doctorName: string;
+  testName: string;
+  payAmount: number;
+  sampleRequiered: boolean;
+}
+
+const TEST_DB: TestItem[] = [
   { code: "T100", name: "CBC", price: 500, sample: "Blood" },
   { code: "T101", name: "Blood Sugar", price: 200, sample: "Blood" },
   { code: "T102", name: "Urine Test", price: 300, sample: "Urine" },
@@ -12,7 +51,7 @@ const TEST_DB = [
 ];
 
 const PatientRegistration: React.FC = () => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<FormData>({
     patientname: "",
     fatherOrHusbandName: "",
     cnic: "",
@@ -27,13 +66,11 @@ const PatientRegistration: React.FC = () => {
   });
 
   const [testInput, setTestInput] = useState("");
-  const [selectedTests, setSelectedTests] = useState<
-    { code: string; name: string; price: number; sample: string }[]
-  >([]);
+  const [selectedTests, setSelectedTests] = useState<TestItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [responseMsg, setResponseMsg] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [savedPatient, setSavedPatient] = useState<any>(null);
+  const [savedPatient, setSavedPatient] = useState<PatientData | null>(null);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -101,8 +138,9 @@ const PatientRegistration: React.FC = () => {
       } else {
         setResponseMsg(data.message || "Error registering patient");
       }
-    } catch (err) {
+    } catch (error) {
       setResponseMsg("Network error");
+      console.error("Registration error:", error);
     } finally {
       setLoading(false);
     }
