@@ -6,8 +6,8 @@ import Counter from "@/models/counter";
 
 // Define interfaces for better type safety
 interface QueryConditions {
-  [key: string]: any;
-  $or?: Array<{ [key: string]: any }>;
+  [key: string]: unknown;
+  $or?: Array<{ [key: string]: RegExp | { $regex: string; $options: string } }>;
   $and?: QueryConditions[];
   createdAt?: {
     $gte?: Date;
@@ -405,8 +405,6 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-
-
 
 // Delete patient by ID
 export async function DELETE(request: NextRequest) {
