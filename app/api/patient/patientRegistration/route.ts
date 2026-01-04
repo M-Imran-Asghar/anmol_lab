@@ -6,8 +6,8 @@ import Counter from "@/models/counter";
 
 // Define interfaces for better type safety
 interface QueryConditions {
-  [key: string]: unknown;
-  $or?: Array<{ [key: string]: { $regex: string; $options: string } }>;
+  [key: string]: any;
+  $or?: Array<{ [key: string]: any }>;
   $and?: QueryConditions[];
   createdAt?: {
     $gte?: Date;
@@ -18,6 +18,7 @@ interface QueryConditions {
   patientEmail?: { $regex: string; $options: string };
   doctorName?: { $regex: string; $options: string };
   patientMobile?: { $regex: string; $options: string };
+  status?: string | { $exists: boolean } | null;
 }
 
 interface TestResult {
