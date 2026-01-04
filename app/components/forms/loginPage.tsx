@@ -1,39 +1,43 @@
+"use client";
 import { useState } from "react";
 import Button from "../ui/button";
 import Input from "../ui/input";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
+
+
 
 type formData = {
-  name: string;
+  email: string;
   password: string;
 };
 
 type Errors = {
-  name: string;
+  email: string;
   password: string;
 };
 
 const LoginPage = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState<formData>({
-    name: "",
+    email: "",
     password: "",
   });
 
   const [errors, setErrors] = useState<Errors>({
-    name: "",
+    email: "",
     password: "",
   });
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: Errors = {
-      name: "",
+      email: "",
       password: "",
     };
 
-    if (formData.name.trim() === "") {
-      newErrors.name = "Name is required";
+    if (formData.email.trim() === "") {
+      newErrors.email = "Name is required";
     }
 
     if (formData.password.trim() === "") {
@@ -42,32 +46,57 @@ const LoginPage = () => {
 
     setErrors(newErrors);
 
-    if (newErrors.name || newErrors.password) {
+    if (newErrors.email || newErrors.password) {
       return;
     }
 
-    // Proceed with submission (e.g., API call or mock login)
-    console.log("Submitted Data:", formData);
-    // For a real app, you could add navigation or auth logic here
+    try {
 
-    setFormData(formData)
-    redirect("/dashboard")
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+        password: formData.password,
+        }),
+      })
+
+      const data =await  response.json()
+      console.log(data)
+
+      if (!response.ok) {
+      throw new Error(data.message || "Login failed");
+    }
+
+ 
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+    }
+
+    
+    router.push("/todayPage");
+      
+    } catch (error) {
+      console.error("Login error:", error);
+    }
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const { name, value } = e.target;
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
 
-    // Clear error on input change
-    setErrors((prev) => ({
-      ...prev,
-      [name]: "",
-    }));
-  };
+  setErrors((prev) => ({
+    ...prev,
+    [name]: "",
+  }));
+};
+
 
   return (
     <div className="flex justify-center items-center bg-linear-to-br
@@ -85,16 +114,16 @@ const LoginPage = () => {
 
         {/* Name Input */}
         <div className="flex flex-col gap-1">
-          <label className="font-medium text-gray-700">Name</label>
+          <label className="font-medium text-gray-700">Email</label>
           <Input
-            value={formData.name}
-            name="name"
+            value={formData.email}
+            name="email"
             onChange={handleInput}
-            type="text"
+            type="email"
             placeholder="Enter your name"
             className="w-full bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
           />
-          {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
         </div>
 
         {/* Password Input */}
