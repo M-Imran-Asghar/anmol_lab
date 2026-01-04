@@ -61,7 +61,7 @@ const AddReportsModel: React.FC<AddReportsModelProps> = ({onClose, patientId, te
         alert(`Error: ${error.message}`);
       }
     } catch (error) {
-      alert('Failed to save test results');
+      console.error('Failed to save test results', error);
     } finally {
       setLoading(false);
     }

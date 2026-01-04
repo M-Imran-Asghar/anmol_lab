@@ -405,38 +405,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// Optional: Get single patient by ID
-export async function GET_BY_ID(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    await connectionToDB();
-    
-    const patient = await PatientRegistration.findOne({ 
-      patientId: Number(params.id) 
-    });
-    
-    if (!patient) {
-      return NextResponse.json(
-        { message: "Patient not found" },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(
-      { 
-        message: "Patient fetched successfully",
-        patient
-      },
-      { status: 200 }
-    );
-    
-  } catch (error) {
-    console.error("Error fetching patient:", error);
-    return NextResponse.json(
-      { message: "Error while fetching patient", error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-}
+
 
 // Delete patient by ID
 export async function DELETE(request: NextRequest) {

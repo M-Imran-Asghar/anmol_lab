@@ -1,7 +1,7 @@
 "use client"
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { 
   Search, 
   User, 
@@ -59,7 +59,7 @@ interface PaginationInfo {
 }
 
 const PatientVerification: React.FC = () => {
-  const [allPatientsList, setAllPatientsList] = useState<Patient[]>([]);
+  // Removed unused allPatientsList state
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -84,7 +84,8 @@ const PatientVerification: React.FC = () => {
     dateTo: ""
   });
 
-  const getAllPatientsData = (page: number = 1, searchParams = filters) => {
+  // Wrap getAllPatientsData with useCallback to stabilize the reference
+  const getAllPatientsData = useCallback((page: number = 1, searchParams = filters) => {
     setIsSearching(true);
     
     // Build query string from filters
@@ -111,7 +112,7 @@ const PatientVerification: React.FC = () => {
       .then(response => response.json())
       .then(data => {
         console.log('API Response:', data);
-        setAllPatientsList(data.patients);
+        // Directly set filteredPatients instead of storing in unused allPatientsList
         setFilteredPatients(data.patients);
         if (data.pagination) {
           setPagination(data.pagination);
@@ -122,7 +123,7 @@ const PatientVerification: React.FC = () => {
         console.error('Error fetching patients data:', error);
         setIsSearching(false);
       });
-  };
+  }, [filters]); // Add filters as dependency since it's used inside
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,7 +179,7 @@ const PatientVerification: React.FC = () => {
     }
   };
 
-    useEffect(() => {
+  useEffect(() => {
     // Create an async function inside useEffect
     const loadInitialData = async () => {
       await getAllPatientsData(1, {
@@ -194,7 +195,7 @@ const PatientVerification: React.FC = () => {
     };
     
     loadInitialData();
-  }, []);
+  }, [getAllPatientsData]); // Add getAllPatientsData as dependency
 
   // Close modal on escape key press
   useEffect(() => {
@@ -236,8 +237,6 @@ const PatientVerification: React.FC = () => {
                 <p className="text-sm text-gray-600">Pending Patients</p>
               </div>
             </div>
-
-            
 
             {/* Search Form - All Fields Visible */}
             <form onSubmit={handleSearch} className="space-y-4">
@@ -379,8 +378,6 @@ const PatientVerification: React.FC = () => {
                 </Button>
               </div>
             </form>
-
-           
           </div>
         </div>
 
@@ -755,7 +752,6 @@ const PatientVerification: React.FC = () => {
               />
             )}
           </div>
-          
         </>
       )}
     </div>
@@ -774,8 +770,6 @@ const DetailRow: React.FC<{ icon: React.ReactNode; label: string; value: string 
       <p className="text-sm text-gray-600">{label}</p>
       <p className="font-medium text-gray-900 truncate">{value}</p>
     </div>
-
-    
   </div>
 );
 

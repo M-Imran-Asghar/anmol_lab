@@ -44,7 +44,7 @@ export default function SummaryPage() {
       } else {
         alert(`Error: ${data.message}`);
       }
-    } catch (error) {
+    } catch {
       alert('Failed to fetch patient data');
     } finally {
       setLoading(false);

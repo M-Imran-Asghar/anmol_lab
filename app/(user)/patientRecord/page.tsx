@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
 import { User, IdCard, Mail, Phone, Stethoscope, Calendar, Search } from "lucide-react";
@@ -30,7 +30,8 @@ const PatientRecord: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPatients = async () => {
+  // Wrap fetchPatients in useCallback to prevent unnecessary re-renders
+  const fetchPatients = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -53,11 +54,11 @@ const PatientRecord: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]); // Add dependencies that fetchPatients uses
 
   useEffect(() => {
     fetchPatients();
-  }, []);
+  }, [fetchPatients]); // Now fetchPatients is in the dependency array
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -80,8 +81,12 @@ const PatientRecord: React.FC = () => {
       dateFrom: '',
       dateTo: ''
     });
-    setTimeout(fetchPatients, 100);
+    // Use setTimeout with fetchPatients as dependency
+    setTimeout(() => {
+      fetchPatients();
+    }, 100);
   };
+
   return (
     <div className="flex justify-center items-center bg-linear-to-br from-purple-200 to-purple-400 py-6 px-4 rounded">
       <div className="bg-white p-10 rounded-xl shadow-xl w-full max-w-6xl">
@@ -90,145 +95,145 @@ const PatientRecord: React.FC = () => {
         </h2>
 
         {/* Search Form - All Fields Visible */}
-            <form onSubmit={handleSearch} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Name Search */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Patient Name 
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Search by patient name..."
-                      value={filters.name}
-                      onChange={(e) => handleFilterChange('name', e.target.value)}
-                      className="pl-10 w-full border-gray-300 focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-
-                {/* CNIC Search */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    CNIC Number
-                  </label>
-                  <div className="relative">
-                    <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Enter CNIC"
-                      value={filters.cnic}
-                      onChange={(e) => handleFilterChange('cnic', e.target.value)}
-                      className="pl-10 w-full border-gray-300 focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Email Search */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      type="email"
-                      placeholder="Enter email"
-                      value={filters.email}
-                      onChange={(e) => handleFilterChange('email', e.target.value)}
-                      className="pl-10 w-full border-gray-300 focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Mobile Search */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mobile Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Enter phone number"
-                      value={filters.mobile}
-                      onChange={(e) => handleFilterChange('mobile', e.target.value)}
-                      className="pl-10 w-full border-gray-300 focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Doctor Search */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Doctor Name
-                  </label>
-                  <div className="relative">
-                    <Stethoscope className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Enter doctor name"
-                      value={filters.doctor}
-                      onChange={(e) => handleFilterChange('doctor', e.target.value)}
-                      className="pl-10 w-full border-gray-300 focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Date Range - Date From */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date From
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="date"
-                      value={filters.dateFrom}
-                      onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                      className="pl-10 w-full border border-gray-300 rounded-lg p-2 focus:border-purple-500 focus:ring-purple-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Date Range - Date To */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date To
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="date"
-                      value={filters.dateTo}
-                      onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                      className="pl-10 w-full border border-gray-300 rounded-lg p-2 focus:border-purple-500 focus:ring-purple-500 outline-none"
-                    />
-                  </div>
-                </div>
+        <form onSubmit={handleSearch} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Name Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Patient Name 
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search by patient name..."
+                  value={filters.name}
+                  onChange={(e) => handleFilterChange('name', e.target.value)}
+                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                />
               </div>
+            </div>
 
-              {/* Search and Clear Buttons */}
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="submit"
-                  disabled={isSearching}
-                  className="flex-1 flex items-center justify-center gap-2 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all duration-300 disabled:opacity-50"
-                >
-                  <Search className="w-5 h-5" />
-                  {isSearching ? 'Searching...' : 'Search Patients'}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleClearFilters}
-                  className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 rounded-lg transition-all duration-300"
-                >
-                  Clear All Filters
-                </Button>
+            {/* CNIC Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                CNIC Number
+              </label>
+              <div className="relative">
+                <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Enter CNIC"
+                  value={filters.cnic}
+                  onChange={(e) => handleFilterChange('cnic', e.target.value)}
+                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                />
               </div>
-            </form>
+            </div>
+
+            {/* Email Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="email"
+                  placeholder="Enter email"
+                  value={filters.email}
+                  onChange={(e) => handleFilterChange('email', e.target.value)}
+                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                />
+              </div>
+            </div>
+
+            {/* Mobile Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile Number
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Enter phone number"
+                  value={filters.mobile}
+                  onChange={(e) => handleFilterChange('mobile', e.target.value)}
+                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                />
+              </div>
+            </div>
+
+            {/* Doctor Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Doctor Name
+              </label>
+              <div className="relative">
+                <Stethoscope className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Enter doctor name"
+                  value={filters.doctor}
+                  onChange={(e) => handleFilterChange('doctor', e.target.value)}
+                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                />
+              </div>
+            </div>
+
+            {/* Date Range - Date From */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date From
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                  className="pl-10 w-full border border-gray-300 rounded-lg p-2 focus:border-purple-500 focus:ring-purple-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Date Range - Date To */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date To
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                  className="pl-10 w-full border border-gray-300 rounded-lg p-2 focus:border-purple-500 focus:ring-purple-500 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Search and Clear Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              type="submit"
+              disabled={isSearching}
+              className="flex-1 flex items-center justify-center gap-2 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all duration-300 disabled:opacity-50"
+            >
+              <Search className="w-5 h-5" />
+              {isSearching ? 'Searching...' : 'Search Patients'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleClearFilters}
+              className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 rounded-lg transition-all duration-300"
+            >
+              Clear All Filters
+            </Button>
+          </div>
+        </form>
 
         {/* Patient Table */}
         <div className="mt-8">
