@@ -137,12 +137,12 @@ const PatientRegistration: React.FC = () => {
               Patient Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input name="patientname" placeholder="Patient Name" value={form.patientname} onChange={handleFormChange} />
-              <Input name="fatherOrHusbandName" placeholder="Father / Husband Name" value={form.fatherOrHusbandName} onChange={handleFormChange} />
-              <Input name="cnic" placeholder="CNIC" value={form.cnic} onChange={handleFormChange} />
-              <Input name="patientMobile" placeholder="Mobile Number" value={form.patientMobile} onChange={handleFormChange} />
+              <Input type="text" name="patientname" placeholder="Patient Name" value={form.patientname} onChange={handleFormChange} />
+              <Input type="text" name="fatherOrHusbandName" placeholder="Father / Husband Name" value={form.fatherOrHusbandName} onChange={handleFormChange} />
+              <Input type="text" name="cnic" placeholder="CNIC" value={form.cnic} onChange={handleFormChange} />
+              <Input type="tel" name="patientMobile" placeholder="Mobile Number" value={form.patientMobile} onChange={handleFormChange} />
               <Input name="patientEmail" type="email" placeholder="Email Address" value={form.patientEmail} onChange={handleFormChange} />
-              <Input name="patientAddress" placeholder="Patient Address" value={form.patientAddress} onChange={handleFormChange} />
+              <Input type="text" name="patientAddress" placeholder="Patient Address" value={form.patientAddress} onChange={handleFormChange} />
             </div>
           </div>
 
@@ -164,12 +164,12 @@ const PatientRegistration: React.FC = () => {
                 <option>Female</option>
                 <option>Other</option>
               </select>
-              <Input name="bloodGroup" placeholder="Blood Group" value={form.bloodGroup} onChange={handleFormChange} />
-              <Input name="doctorName" placeholder="Doctor Name" value={form.doctorName} onChange={handleFormChange} />
+              <Input type="text" name="bloodGroup" placeholder="Blood Group" value={form.bloodGroup} onChange={handleFormChange} />
+              <Input type="text" name="doctorName" placeholder="Doctor Name" value={form.doctorName} onChange={handleFormChange} />
             </div>
 
             <div className="flex gap-2 mb-3">
-              <Input placeholder="Enter Test Code or Name" value={testInput} onChange={(e) => setTestInput(e.target.value)} />
+              <Input type="text" placeholder="Enter Test Code or Name" value={testInput} onChange={(e) => setTestInput(e.target.value)} />
               <Button type="button" className="p-2" onClick={handleAddTest}>Add Test</Button>
             </div>
 
