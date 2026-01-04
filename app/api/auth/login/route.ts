@@ -6,8 +6,6 @@ import { connectionToDB } from "@/lib/db";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-// JWT_SECRET= abcdefghjklmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ
-
 export async function POST(request: NextRequest) {
   try {
     await connectionToDB();
@@ -16,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { message: "email and password is required" },
+        { message: "Email and password are required" },
         { status: 400 }
       );
     }
@@ -55,9 +53,10 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return NextResponse.json(
-      { message: "Error while login user", error: error.message },
+      { message: "Error while logging in user", error: errorMessage },
       { status: 500 }
     );
   }

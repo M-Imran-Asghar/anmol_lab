@@ -4,6 +4,56 @@ import { connectionToDB } from "@/lib/db";
 import jwt from "jsonwebtoken";
 import Counter from "@/models/counter";
 
+// Define interfaces for better type safety
+interface QueryConditions {
+  [key: string]: unknown;
+  $or?: Array<{ [key: string]: { $regex: string; $options: string } }>;
+  $and?: QueryConditions[];
+  createdAt?: {
+    $gte?: Date;
+    $lte?: Date;
+  };
+  patientname?: { $regex: string; $options: string };
+  cnic?: { $regex: string; $options: string };
+  patientEmail?: { $regex: string; $options: string };
+  doctorName?: { $regex: string; $options: string };
+  patientMobile?: { $regex: string; $options: string };
+}
+
+interface TestResult {
+  testName: string;
+  result: string;
+  referenceRange: string;
+  notes: string;
+  date: Date;
+}
+
+interface UpdateData {
+  updatedAt: Date;
+  receptionsName?: string;
+  patientname?: string;
+  fatherOrHusbandName?: string;
+  pateintAge?: number;
+  years_month_day?: string;
+  cnic?: number;
+  bloodGroup?: string;
+  gender?: string;
+  patientEmail?: string;
+  patientMobile?: number;
+  doctorName?: string;
+  payAmount?: number;
+  sampleReceived?: boolean;
+  patientAddress?: string;
+  sampleRequiered?: boolean;
+  testName?: string;
+  testResults?: TestResult[];
+  testResult?: string;
+  referenceRange?: string;
+  resultNotes?: string;
+  resultDate?: Date;
+  status?: string;
+}
+
 export async function POST(request: NextRequest) {
   const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -109,8 +159,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     
-    const query: any = {};
-    const andConditions: any[] = [];
+    const query: QueryConditions = {};
+    const andConditions: QueryConditions[] = [];
     
     // Filter by status if provided
     if (status.trim()) {
@@ -274,7 +324,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 5️⃣ Prepare update data
-    const updateData: any = {
+    const updateData: UpdateData = {
       updatedAt: new Date(),
       // Include other fields if they are provided
       ...(receptionsName !== undefined && { receptionsName }),
@@ -301,7 +351,7 @@ export async function PUT(request: NextRequest) {
     
     if (hasTestResults) {
       // Add multiple test results
-      updateData.testResults = testResults.map(test => ({
+      updateData.testResults = testResults.map((test: TestResult) => ({
         testName: test.testName,
         result: test.result,
         referenceRange: test.referenceRange,

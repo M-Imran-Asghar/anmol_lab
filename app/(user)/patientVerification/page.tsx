@@ -11,7 +11,6 @@ import {
   FileText, 
   X, 
   Check, 
-  MapPin, 
   Droplets, 
   Stethoscope,
   CreditCard,
@@ -179,18 +178,22 @@ const PatientVerification: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    // Initial load with no filters
-    getAllPatientsData(1, {
-      search: "",
-      name: "",
-      cnic: "",
-      email: "",
-      mobile: "",
-      doctor: "",
-      dateFrom: "",
-      dateTo: ""
-    });
+    useEffect(() => {
+    // Create an async function inside useEffect
+    const loadInitialData = async () => {
+      await getAllPatientsData(1, {
+        search: "",
+        name: "",
+        cnic: "",
+        email: "",
+        mobile: "",
+        doctor: "",
+        dateFrom: "",
+        dateTo: ""
+      });
+    };
+    
+    loadInitialData();
   }, []);
 
   // Close modal on escape key press
