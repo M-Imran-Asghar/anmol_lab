@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
-import { User, IdCard, Mail, Phone, Stethoscope, Calendar, Search } from "lucide-react";
+import { User, IdCard, Mail, Phone, Stethoscope, Calendar, Search, Printer, Download } from "lucide-react";
 
 interface Patient {
   _id: string;
@@ -69,6 +69,54 @@ const PatientRecord: React.FC = () => {
     setIsSearching(true);
     await fetchPatients();
     setIsSearching(false);
+  };
+
+  const downloadPDF = async (patientId: number) => {
+    try {
+      const response = await fetch(`/api/patient/pdf?patientId=${patientId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || 'Failed to generate PDF');
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lab_report_${patientId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Error downloading PDF');
+    }
+  };
+
+  const printReport = async (patientId: number) => {
+    try {
+      const response = await fetch(`/api/patient/pdf?patientId=${patientId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || 'Failed to generate PDF');
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error printing PDF:', error);
+      alert('Error printing PDF');
+    }
   };
 
   const handleClearFilters = () => {
@@ -261,6 +309,7 @@ const PatientRecord: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -295,6 +344,24 @@ const PatientRecord: React.FC = () => {
                         }`}>
                           {patient.status || 'Pending'}
                         </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {patient.status === 'Verified' && (
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => printReport(patient.patientId)}
+                              className="px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded transition-all text-xs"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              onClick={() => downloadPDF(patient.patientId)}
+                              className="px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded transition-all text-xs"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

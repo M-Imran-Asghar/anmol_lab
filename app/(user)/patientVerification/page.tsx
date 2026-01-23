@@ -216,6 +216,54 @@ const PatientVerification: React.FC = () => {
     };
   }, [showDetailsModal]);
 
+  const downloadPDF = async (patientId: number) => {
+    try {
+      const response = await fetch(`/api/patient/pdf?patientId=${patientId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || 'Failed to generate PDF');
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lab_report_${patientId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Error downloading PDF');
+    }
+  };
+
+  const printReport = async (patientId: number) => {
+    try {
+      const response = await fetch(`/api/patient/pdf?patientId=${patientId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || 'Failed to generate PDF');
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error printing PDF:', error);
+      alert('Error printing PDF');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-purple-50 to-indigo-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -484,7 +532,7 @@ const PatientVerification: React.FC = () => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Mail className="w-3 h-3 text-gray-400" />
-                                <span className="text-sm text-gray-700 truncate max-w-[150px]">
+                                <span className="text-sm text-gray-700 truncate max-w-36">
                                   {patient.patientEmail}
                                 </span>
                               </div>
@@ -513,12 +561,30 @@ const PatientVerification: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-4 px-4">
-                            <Button
-                              onClick={() => handleViewDetails(patient)}
-                              className="px-3 py-1.5 bg-linear-to-r from-purple-100 to-purple-50 text-purple-700 hover:from-purple-200 hover:to-purple-100 rounded-lg transition-all duration-200 text-sm"
-                            >
-                              View Details
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => handleViewDetails(patient)}
+                                className="px-3 py-1.5 bg-linear-to-r from-purple-100 to-purple-50 text-purple-700 hover:from-purple-200 hover:to-purple-100 rounded-lg transition-all duration-200 text-sm"
+                              >
+                                View Details
+                              </Button>
+                              {patient.status === 'Verified' && (
+                                <>
+                                  <Button
+                                    onClick={() => printReport(patient.patientId || 0)}
+                                    className="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-all duration-200 text-sm"
+                                  >
+                                    <Printer className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    onClick={() => downloadPDF(patient.patientId || 0)}
+                                    className="px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg transition-all duration-200 text-sm"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -722,11 +788,15 @@ const PatientVerification: React.FC = () => {
                         <Edit className="w-4 h-4" />
                         Edit
                       </Button>
-                      <Button className="flex items-center justify-center gap-2 py-3 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors">
+                      <Button className="flex items-center justify-center gap-2 py-3 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+                      onClick={() => printReport(selectedPatient.patientId || 0)}
+                      >
                         <Printer className="w-4 h-4" />
                         Print
                       </Button>
-                      <Button className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                      <Button className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                      onClick={() => downloadPDF(selectedPatient.patientId)}
+                      >
                         <Download className="w-4 h-4" />
                         Export
                       </Button>

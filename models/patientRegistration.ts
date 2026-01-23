@@ -35,6 +35,7 @@ export interface IPatientRegistration{
     referenceRange?: string;
     resultNotes?: string;
     resultDate?: Date;
+    reportPDF?: string | null;
 }
 
 const patientRegistrationSchema = new Schema({
@@ -70,8 +71,13 @@ const patientRegistrationSchema = new Schema({
     testResult: { type: String },
     referenceRange: { type: String },
     resultNotes: { type: String, default: "" },
-    resultDate: { type: Date }
-});
+    resultDate: { type: Date },
+    reportPDF: {
+      type: String,
+      default: null
+    },
+},
+ { timestamps: true });
 
 const PatientRegistration = models?.PatientRegistration || 
 model<IPatientRegistration>("PatientRegistration", patientRegistrationSchema);

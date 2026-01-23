@@ -176,7 +176,7 @@ export default function SummaryPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Mail className="w-3 h-3 text-gray-400" />
-                            <span className="text-sm text-gray-700 truncate max-w-[150px]">{patient.patientEmail}</span>
+                            <span className="text-sm text-gray-700 truncate max-w-36">{patient.patientEmail}</span>
                           </div>
                         </div>
                       </td>
