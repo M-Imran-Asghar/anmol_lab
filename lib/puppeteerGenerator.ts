@@ -17,7 +17,7 @@ export async function generatePatientReport(
 
   try {
     browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
@@ -32,7 +32,7 @@ export async function generatePatientReport(
       margin: { top: "140px", right: "10mm", bottom: "50px", left: "10mm" }, // Increased top margin for header
     });
 
-    return pdfBuffer;
+    return Buffer.from(pdfBuffer);
   } catch (error) {
     console.error("Error generating PDF:", error);
     throw error;
@@ -41,13 +41,136 @@ export async function generatePatientReport(
   }
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatReportDate(date: Date | string | number | undefined): string {
+  const parsedDate = date ? new Date(date) : new Date();
+  return parsedDate.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function buildReportHeading(patient: PatientData): string {
+  const groupedNames = Array.from(
+    new Set(
+      (patient.testResults || [])
+        .map((test) => test.parentTestName || test.testName)
+        .filter(Boolean),
+    ),
+  );
+
+  if (groupedNames.length === 1) {
+    return `${groupedNames[0].toUpperCase()} REPORT`;
+  }
+
+  const normalizedTestName = Array.isArray(patient.testName)
+    ? patient.testName.filter(Boolean).join(", ")
+    : patient.testName;
+
+  if (normalizedTestName?.trim()) {
+    return `${normalizedTestName.toUpperCase()} REPORT`;
+  }
+
+  return "LABORATORY REPORT";
+}
+
+function buildResultSections(patient: PatientData): string {
+  const testResults = patient.testResults || [];
+
+  if (testResults.length === 0) {
+    return `
+      <div class="test-block">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th class="section-heading">TEST NAME</th>
+              <th class="unit-col">UNITS</th>
+              <th class="result-col">RESULT</th>
+              <th class="range-col">REFERENCE RANGE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="test-cell">${escapeHtml(Array.isArray(patient.testName) ? patient.testName.join(", ") : patient.testName || "General Test")}</td>
+              <td class="unit-cell">-</td>
+              <td class="result-cell">Pending</td>
+              <td class="range-cell">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  const groupedTests = new Map<string, typeof testResults>();
+
+  testResults.forEach((test) => {
+    const groupName = test.parentTestName?.trim() || test.testName.trim() || "Test";
+    const currentTests = groupedTests.get(groupName) || [];
+    currentTests.push(test);
+    groupedTests.set(groupName, currentTests);
+  });
+
+  return Array.from(groupedTests.entries())
+    .map(([groupName, items]) => {
+      const hasSubTests =
+        items.length > 1 ||
+        items.some((item) => (item.parentTestName || "").trim().toLowerCase() !== item.testName.trim().toLowerCase());
+
+      const firstColumnHeader = hasSubTests ? "SUB TEST NAME" : "TEST NAME";
+      const firstColumnValue = hasSubTests ? null : items[0]?.testName || groupName;
+      const sectionRows = items
+        .map((item, index) => `
+          <tr>
+            <td class="test-cell">${escapeHtml(hasSubTests ? item.testName || "-" : index === 0 ? firstColumnValue || "-" : "-")}</td>
+            <td class="unit-cell">${escapeHtml(item.unit || "-")}</td>
+            <td class="result-cell">${escapeHtml(item.result || "-")}</td>
+            <td class="range-cell">${escapeHtml(item.referenceRange || "-")}</td>
+          </tr>
+        `)
+        .join("");
+
+      return `
+        <div class="test-block">
+          ${hasSubTests ? `<div class="test-block-heading">${escapeHtml(groupName.toUpperCase())}</div>` : ""}
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th class="section-heading">${firstColumnHeader}</th>
+                <th class="unit-col">UNIT</th>
+                <th class="result-col">RESULT</th>
+                <th class="range-col">REFERENCE RANGE</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sectionRows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    })
+    .join("");
+}
+
 function generateHTMLReport(patient: PatientData): string {
-  const reportDate = new Date(
-    patient.updatedAt || Date.now(),
-  ).toLocaleDateString("en-GB");
-  const reportTime = new Date(
-    patient.updatedAt || Date.now(),
-  ).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const reportedAt = patient.updatedAt || Date.now();
+  const collectedAt = patient.createdAt || Date.now();
+  const reportDate = formatReportDate(reportedAt);
+  const collectionDate = formatReportDate(collectedAt);
+  const reportHeading = buildReportHeading(patient);
+  const ageText = patient.pateintAge
+    ? `${patient.pateintAge} ${patient.years_month_day || "Year"}`
+    : "-";
+  const resultSections = buildResultSections(patient);
 
   return `
     <!DOCTYPE html>
@@ -68,7 +191,6 @@ function generateHTMLReport(patient: PatientData): string {
           padding: 0;
         }
 
-        /* HEADER */
         .header {
           position: fixed;
           top: 0;
@@ -79,14 +201,14 @@ function generateHTMLReport(patient: PatientData): string {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0 10px;
+          padding: 0 12px;
           background: white;
-          border-bottom: 2px solid #0066cc;
           z-index: 1000;
           box-sizing: border-box;
         }
 
-        .header-left, .header-right {
+        .header-left,
+        .header-right {
           height: 100px;
           display: flex;
           align-items: center;
@@ -106,114 +228,151 @@ function generateHTMLReport(patient: PatientData): string {
           width: 100%;
           height: 100px;
           object-fit: contain;
-          max-width: calc(100% - 10px);
+          max-width: calc(100% - 12px);
         }
 
-        .barcode-section {
-          display: flex;
-          justify-content: space-between;
-          padding: 10px 20px;
-          background: #f5f5f5;
-          margin-top: 120px; /* Push down for fixed header */
-          margin-bottom: 15px;
+        .content-wrapper {
+          padding: 122px 18px 78px;
         }
-        
-        .barcode-box {
+
+        .top-note {
           text-align: center;
-        }
-        
-        .barcode-placeholder {
-          background: #000;
-          height: 30px;
-          width: 150px;
-          margin-bottom: 3px;
-        }
-        
-        .patient-section {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          padding: 0 20px;
-          margin-bottom: 15px;
-        }
-        
-        .info-row {
-          display: flex;
-          margin-bottom: 5px;
           font-size: 10px;
+          font-weight: 600;
+          margin-bottom: 10px;
         }
-        
-        .info-label {
-          font-weight: bold;
-          min-width: 100px;
+
+        .meta-grid {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 10px;
         }
-        
-        .info-value {
-          color: #333;
-        }
-        
-        .report-title {
-          background: #0066cc;
-          color: white;
-          padding: 8px 20px;
-          font-weight: bold;
-          font-size: 12px;
-          margin: 15px 0;
-        }
-        
-        .test-section {
-          padding: 0 20px;
-          margin-bottom: 20px;
-        }
-        
-        .test-name {
-          font-weight: bold;
-          margin-bottom: 8px;
+
+        .meta-grid td {
+          padding: 2px 4px;
+          vertical-align: top;
           font-size: 11px;
         }
-        
-        .test-results {
-          margin-left: 15px;
+
+        .meta-label {
+          font-weight: 700;
+          white-space: nowrap;
         }
-        
-        .test-item {
-          display: flex;
-          justify-content: space-between;
-          padding: 5px 0;
-          border-bottom: 1px solid #eee;
+
+        .separator {
+          border-top: 1px solid #000;
+          margin: 8px 0 10px;
         }
-        
-        .test-item span:first-child {
-          flex: 2;
-        }
-        
-        .test-item span:nth-child(2) {
-          flex: 1;
+
+        .report-heading {
           text-align: center;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: 0.8px;
+          margin-bottom: 10px;
         }
-        
-        .test-item span:last-child {
-          flex: 1;
-          text-align: right;
-          color: #666;
+
+        .results-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          margin-bottom: 16px;
         }
-        
-        .notes {
-          margin: 10px 0;
-          padding: 10px;
-          background: #f9f9f9;
-          font-size: 9px;
-          line-height: 1.4;
+
+        .results-table thead th {
+          border-top: 1.5px solid #000;
+          border-bottom: 1.5px solid #000;
+          padding: 6px 8px;
+          font-size: 11px;
+          text-align: left;
         }
-        
-        /* FOOTER */
+
+        .results-table tbody td {
+          padding: 6px 8px;
+          border-bottom: 1px solid #d9d9d9;
+          vertical-align: top;
+          font-size: 11px;
+        }
+
+        .section-heading {
+          width: 42%;
+        }
+
+        .result-col {
+          width: 18%;
+        }
+
+        .unit-col {
+          width: 16%;
+        }
+
+        .range-col {
+          width: 24%;
+        }
+
+        .group-row {
+          font-weight: 700;
+          text-transform: uppercase;
+          padding-top: 10px;
+          background: #f8f8f8;
+        }
+
+        .test-block {
+          margin-bottom: 14px;
+        }
+
+        .test-block-heading {
+          margin: 10px 0 4px;
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+        }
+
+        .test-cell {
+          font-weight: 500;
+        }
+
+        .result-cell {
+          font-weight: 700;
+        }
+
+        .unit-cell,
+        .range-cell {
+          color: #222;
+        }
+
+        .verification-note {
+          text-align: center;
+          margin: 18px 0 22px;
+          font-size: 10px;
+          font-style: italic;
+        }
+
+        .signatures {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 32px;
+          margin-top: 22px;
+        }
+
+        .signature-block {
+          text-align: center;
+          font-size: 10px;
+        }
+
+        .signature-line {
+          border-top: 1px solid #000;
+          margin: 0 auto 6px;
+          width: 78%;
+        }
+
         .footer {
           position: fixed;
           bottom: 0;
           left: 0;
           right: 0;
           width: 100%;
-          height: 70;
+          height: 56px;
           background: white;
           z-index: 1000;
           box-sizing: border-box;
@@ -224,20 +383,12 @@ function generateHTMLReport(patient: PatientData): string {
 
         .footer-img {
           width: 100%;
-          height: full;
+          height: 56px;
           object-fit: cover;
         }
-        
-        /* Content wrapper to prevent overlap with fixed elements */
-        .content-wrapper {
-          padding-top: 10px;
-          padding-bottom: 50px; /* Space for footer */
-        }
-          
       </style>
     </head>
     <body>
-      <!-- Header -->
       <div class="header">
         <div class="header-left">
           <img 
@@ -254,107 +405,56 @@ function generateHTMLReport(patient: PatientData): string {
           />
         </div>
       </div>
-      
-      <!-- Content Wrapper -->
+
       <div class="content-wrapper">
-        <!-- Barcode Section -->
-        <div class="barcode-section">
-          <div class="barcode-box">
-            <p style="font-size: 8px;">Lab No: ${patient.patientId}</p>
-          </div>
-          <div style="text-align: right; font-size: 9px;">
-            <p><strong>Referred to:</strong> ${patient.doctorName || "SELF"}</p>
-          </div>
-          <div class="barcode-box">
-            <p style="font-size: 8px;">Patient ID: ${patient.patientId}</p>
-          </div>
+        <div class="top-note">
+          Our Aim Provide Best Diagnostic Facilities With Affordable Price In Our Town
         </div>
-        
-        <!-- Patient Information -->
-        <div class="patient-section">
-          <div>
-            <div class="info-row">
-              <span class="info-label">Patient Name:</span>
-              <span class="info-value">${patient.patientname}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">S/D/O:</span>
-              <span class="info-value">${patient.fatherOrHusbandName || "-"}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Age / Sex:</span>
-              <span class="info-value">${patient.pateintAge} ${patient.years_month_day} / ${patient.gender}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Blood Group:</span>
-              <span class="info-value">${patient.bloodGroup || "Unknown"}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Phone:</span>
-              <span class="info-value">${patient.patientMobile || "-"}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Address:</span>
-              <span class="info-value">${patient.patientAddress || "-"}</span>
-            </div>
-          </div>
-          <div>
-            <div class="info-row">
-              <span class="info-label">Requested on:</span>
-              <span class="info-value">${reportDate} ${reportTime}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Reported:</span>
-              <span class="info-value">${reportDate} ${reportTime}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Requested By:</span>
-              <span class="info-value">${patient.doctorName || "AL-FALAH MEDICAL LAB"}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Performed By:</span>
-              <span class="info-value">AL-FALAH MEDICAL LAB</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Ref By:</span>
-              <span class="info-value">${patient.doctorName || "SELF"}</span>
-            </div>
-          </div>
+
+        <table class="meta-grid">
+          <tr>
+            <td><span class="meta-label">Cr/Lab No:</span> ${escapeHtml(String(patient.patientId || "-"))}</td>
+            <td><span class="meta-label">Date:</span> ${escapeHtml(reportDate)}</td>
+          </tr>
+          <tr>
+            <td><span class="meta-label">Patient Name:</span> ${escapeHtml(patient.patientname || "-")}</td>
+            <td><span class="meta-label">Age/Sex:</span> ${escapeHtml(ageText)} / ${escapeHtml(patient.gender || "-")}</td>
+          </tr>
+          <tr>
+            <td><span class="meta-label">Consultant:</span> ${escapeHtml(patient.doctorName || "Self")}</td>
+            <td><span class="meta-label">Collected:</span> ${escapeHtml(collectionDate)}</td>
+          </tr>
+          <tr>
+            <td><span class="meta-label">S/D/O:</span> ${escapeHtml(patient.fatherOrHusbandName || "-")}</td>
+            <td><span class="meta-label">Phone:</span> ${escapeHtml(String(patient.patientMobile || "-"))}</td>
+          </tr>
+          <tr>
+            <td><span class="meta-label">Address:</span> ${escapeHtml(patient.patientAddress || "-")}</td>
+            <td><span class="meta-label">Reported:</span> ${escapeHtml(reportDate)}</td>
+          </tr>
+        </table>
+
+        <div class="separator"></div>
+        <div class="report-heading">${escapeHtml(reportHeading)}</div>
+
+        ${resultSections}
+
+        <div class="verification-note">
+          Electronically verified report. No signature required.
         </div>
-        
-        <!-- Report Title -->
-        <div class="report-title">GLUCOSE REPORT</div>
-        
-        <!-- Test Results -->
-        <div class="test-section">
-          <div class="test-name">TEST(S)</div>
-          <div class="test-results">
-            ${
-              patient.testResults && patient.testResults.length > 0
-                ? patient.testResults
-                    .map(
-                      (test) => `
-                <div class="test-item">
-                  <span>${test.testName}</span>
-                  <span><strong>${test.result}</strong></span>
-                  <span>${test.referenceRange}</span>
-                </div>
-              `,
-                    )
-                    .join("")
-                : `
-                <div class="test-item">
-                  <span>${patient.testName || "General Test"}</span>
-                  <span><strong>Pending</strong></span>
-                  <span>-</span>
-                </div>
-              `
-            }
+
+        <div class="signatures">
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div>Medical Lab Technician</div>
+          </div>
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div>Medical Lab Technologist</div>
           </div>
         </div>
       </div>
-      
-      <!-- Footer -->
+
       <div class="footer">
         <img class="footer-img"
           src="data:image/png;base64,${pdfFooterBase64}" 

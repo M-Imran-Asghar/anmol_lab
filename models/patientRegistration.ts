@@ -13,20 +13,22 @@ export interface IPatientRegistration{
     patientMobile: number,
     doctorName: string,
     payAmount: number,
-    sampleReceived: Boolean,
+    sampleReceived: boolean,
     patientAddress: string,
     createdAt: Date,
     updatedAt: Date,
     _id?: mongoose.Types.ObjectId
-    sampleRequiered: Boolean
+    sampleRequiered: boolean
     testName: string | string[]
     patientId: number;
     status: string;
     // New fields for test results - support multiple tests
     testResults?: Array<{
+        parentTestName?: string;
         testName: string;
+        unit?: string;
         result: string;
-        referenceRange: string;
+        referenceRange?: string;
         notes?: string;
         date?: Date;
     }>;
@@ -36,6 +38,7 @@ export interface IPatientRegistration{
     resultNotes?: string;
     resultDate?: Date;
     reportPDF?: string | null;
+    reportFileName?: string | null;
 }
 
 const patientRegistrationSchema = new Schema({
@@ -61,9 +64,11 @@ const patientRegistrationSchema = new Schema({
     status: { type: String, default: "Pending", enum: ["Pending", "Verified"] },
     // New fields for multiple test results
     testResults: [{
+        parentTestName: { type: String },
         testName: { type: String, required: true },
+        unit: { type: String, default: "" },
         result: { type: String, required: true },
-        referenceRange: { type: String, required: true },
+        referenceRange: { type: String, default: "" },
         notes: { type: String, default: "" },
         date: { type: Date, default: Date.now }
     }],
@@ -76,10 +81,30 @@ const patientRegistrationSchema = new Schema({
       type: String,
       default: null
     },
+    reportFileName: {
+      type: String,
+      default: null
+    },
 },
  { timestamps: true });
 
-const PatientRegistration = models?.PatientRegistration || 
-model<IPatientRegistration>("PatientRegistration", patientRegistrationSchema);
+const existingPatientRegistrationModel =
+  models?.PatientRegistration as mongoose.Model<IPatientRegistration> | undefined;
+
+// In dev, Next can reuse an older compiled model schema.
+// Rebuild it when newer nested result fields are missing.
+if (
+  existingPatientRegistrationModel &&
+  (
+    !existingPatientRegistrationModel.schema.path("testResults.unit") ||
+    !existingPatientRegistrationModel.schema.path("testResults.parentTestName")
+  )
+) {
+  delete models.PatientRegistration;
+}
+
+const PatientRegistration =
+  (models?.PatientRegistration as mongoose.Model<IPatientRegistration> | undefined) ||
+  model<IPatientRegistration>("PatientRegistration", patientRegistrationSchema);
 
 export default PatientRegistration;

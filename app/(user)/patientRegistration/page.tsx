@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
 
 // Define interfaces
 interface TestItem {
+  _id: string;
   code: string;
   name: string;
   price: number;
   sample: string;
+  subTests: Array<{
+    name: string;
+    referenceRange: string;
+  }>;
 }
 
 interface FormData {
@@ -43,13 +48,6 @@ interface PatientData {
   sampleRequiered: boolean;
 }
 
-const TEST_DB: TestItem[] = [
-  { code: "T100", name: "CBC", price: 500, sample: "Blood" },
-  { code: "T101", name: "Blood Sugar", price: 200, sample: "Blood" },
-  { code: "T102", name: "Urine Test", price: 300, sample: "Urine" },
-  { code: "T103", name: "Liver Function", price: 800, sample: "Blood" },
-];
-
 const PatientRegistration: React.FC = () => {
   const [form, setForm] = useState<FormData>({
     patientname: "",
@@ -66,6 +64,8 @@ const PatientRegistration: React.FC = () => {
   });
 
   const [testInput, setTestInput] = useState("");
+  const [availableTests, setAvailableTests] = useState<TestItem[]>([]);
+  const [testsLoading, setTestsLoading] = useState(true);
   const [selectedTests, setSelectedTests] = useState<TestItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [responseMsg, setResponseMsg] = useState("");
@@ -77,15 +77,57 @@ const PatientRegistration: React.FC = () => {
     setForm({ ...form, [name]: value });
   };
 
+  useEffect(() => {
+    const fetchTests = async () => {
+      try {
+        const response = await fetch("/api/lab-tests", {
+          credentials: "include",
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          setAvailableTests(data.tests || []);
+        } else {
+          setResponseMsg(data.message || "Failed to load tests");
+        }
+      } catch (error) {
+        console.error("Error loading tests:", error);
+        setResponseMsg("Failed to load tests");
+      } finally {
+        setTestsLoading(false);
+      }
+    };
+
+    fetchTests();
+  }, []);
+
+  const normalizedTestInput = testInput.trim().toLowerCase();
+  const matchedTest = normalizedTestInput
+    ? availableTests.find((test) => {
+        const normalizedName = test.name.toLowerCase();
+        const normalizedCode = test.code.toLowerCase();
+
+        return (
+          normalizedCode === normalizedTestInput ||
+          normalizedName === normalizedTestInput ||
+          normalizedName.includes(normalizedTestInput)
+        );
+      }) || null
+    : null;
+
   const handleAddTest = () => {
-    const test = TEST_DB.find(
-      (t) =>
-        t.code.toLowerCase() === testInput.toLowerCase() ||
-        t.name.toLowerCase() === testInput.toLowerCase()
-    );
-    if (test && !selectedTests.find((t) => t.code === test.code)) {
-      setSelectedTests([...selectedTests, test]);
+    if (!matchedTest) {
+      setResponseMsg("No matching test found in the database");
+      return;
     }
+
+    if (!selectedTests.find((test) => test.code === matchedTest.code)) {
+      setSelectedTests([...selectedTests, matchedTest]);
+      setResponseMsg("");
+    } else {
+      setResponseMsg("This test is already added");
+    }
+
     setTestInput("");
   };
 
@@ -162,16 +204,16 @@ const PatientRegistration: React.FC = () => {
   };
 
   return (
-    <div className="bg-linear-to-br from-purple-200 to-purple-400 px-4 py-3 flex justify-center min-h-screen">
-      <div className="bg-white w-full max-w-6xl rounded-xl shadow-xl p-5">
-        <h2 className="text-2xl font-bold text-purple-700 text-center mb-4">
+    <div className="app-page">
+      <div className="page-card page-accent mx-auto w-full max-w-7xl rounded-[2rem] p-5 sm:p-8">
+        <h2 className="mb-4 text-center text-3xl font-black text-violet-700 sm:text-4xl">
           Patient Registration
         </h2>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           {/* Patient Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-base font-semibold text-purple-600 mb-3">
+          <div className="page-card rounded-[1.5rem] p-4 sm:p-6">
+            <h3 className="mb-3 text-base font-black uppercase tracking-[0.2em] text-violet-600">
               Patient Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -185,19 +227,19 @@ const PatientRegistration: React.FC = () => {
           </div>
 
           {/* Medical Info & Tests */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-base font-semibold text-purple-600 mb-3">
+          <div className="page-card rounded-[1.5rem] p-4 sm:p-6">
+            <h3 className="mb-3 text-base font-black uppercase tracking-[0.2em] text-violet-600">
               Medical Details & Test Selection
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
               <Input name="pateintAge" type="number" placeholder="Age" value={form.pateintAge} onChange={handleFormChange} />
-              <select name="years_month_day" value={form.years_month_day} onChange={handleFormChange} className="border rounded px-2 py-2">
+              <select name="years_month_day" value={form.years_month_day} onChange={handleFormChange} className="soft-input px-4 py-3">
                 <option value="years">Years</option>
                 <option value="months">Months</option>
                 <option value="days">Days</option>
               </select>
-              <select name="gender" value={form.gender} onChange={handleFormChange} className="border rounded px-2 py-2">
+              <select name="gender" value={form.gender} onChange={handleFormChange} className="soft-input px-4 py-3">
                 <option>Male</option>
                 <option>Female</option>
                 <option>Other</option>
@@ -206,14 +248,43 @@ const PatientRegistration: React.FC = () => {
               <Input type="text" name="doctorName" placeholder="Doctor Name" value={form.doctorName} onChange={handleFormChange} />
             </div>
 
-            <div className="flex gap-2 mb-3">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row">
               <Input type="text" placeholder="Enter Test Code or Name" value={testInput} onChange={(e) => setTestInput(e.target.value)} />
-              <Button type="button" className="p-2" onClick={handleAddTest}>Add Test</Button>
+              <Button type="button" className="bg-violet-600 px-4 py-3 text-white hover:bg-violet-700" onClick={handleAddTest} disabled={testsLoading}>
+                Add Test
+              </Button>
             </div>
 
+            {testsLoading && (
+              <div className="space-y-3 mb-4">
+                <div className="shimmer h-12 w-full rounded-2xl" />
+                <div className="shimmer h-12 w-2/3 rounded-2xl" />
+              </div>
+            )}
+
+            {!testsLoading && matchedTest && (
+              <div className="mb-4 rounded-2xl border border-violet-200 bg-violet-50/90 p-4 shadow-sm">
+                <div className="flex flex-col gap-1 text-sm text-gray-700">
+                  <p><strong>Code:</strong> {matchedTest.code}</p>
+                  <p><strong>Test:</strong> {matchedTest.name}</p>
+                  <p><strong>Sample:</strong> {matchedTest.sample}</p>
+                  <p><strong>Price:</strong> Rs. {matchedTest.price}</p>
+                </div>
+              </div>
+            )}
+
+            {!testsLoading && normalizedTestInput && !matchedTest && (
+              <p className="text-sm text-red-500 mb-3">No test found for this code or name.</p>
+            )}
+
+            {!testsLoading && availableTests.length === 0 && (
+              <p className="text-sm text-red-500 mb-3">No tests are configured in the database yet.</p>
+            )}
+
             {selectedTests.length > 0 && (
-              <table className="w-full border text-sm mb-3">
-                <thead className="bg-purple-100">
+              <div className="table-shell overflow-x-auto">
+              <table className="w-full text-sm mb-3">
+                <thead className="bg-violet-100/80">
                   <tr>
                     <th className="border px-2 py-1">Code</th>
                     <th className="border px-2 py-1">Name</th>
@@ -236,15 +307,16 @@ const PatientRegistration: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 
           {/* Billing */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-base font-semibold text-purple-600 mb-3">
+          <div className="page-card rounded-[1.5rem] p-4 sm:p-6">
+            <h3 className="mb-3 text-base font-black uppercase tracking-[0.2em] text-violet-600">
               Billing Summary
             </h3>
-            <table className="w-full border text-sm">
+            <table className="table-shell w-full text-sm">
               <tbody>
                 <tr>
                   <td className="border px-3 py-2">Total Amount</td>
@@ -259,17 +331,22 @@ const PatientRegistration: React.FC = () => {
 
           {/* Submit */}
           <div className="flex justify-end">
-            <Button type="submit" className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow" disabled={loading}>
-              {loading ? "Saving..." : "Save Patient"}
+            <Button type="submit" className="bg-linear-to-r from-violet-600 to-indigo-600 px-6 py-3 text-white hover:from-violet-700 hover:to-indigo-700" disabled={loading}>
+              {loading ? (
+                <>
+                  <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  Saving...
+                </>
+              ) : "Save Patient"}
             </Button>
           </div>
         </form>
 
         {/* Modal */}
         {showModal && savedPatient && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-5 rounded-lg max-w-lg w-full relative">
-              <h3 className="text-xl font-bold mb-3 text-purple-700">Patient Details</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+            <div className="page-card w-full max-w-lg rounded-[1.75rem] p-5 relative">
+              <h3 className="mb-3 text-xl font-black text-violet-700">Patient Details</h3>
               <div id="print-area">
                 <p><strong>Patient ID:</strong> {savedPatient.patientId}</p>
                 <p><strong>Name:</strong> {savedPatient.patientname}</p>
@@ -285,10 +362,10 @@ const PatientRegistration: React.FC = () => {
                 <p><strong>Total Amount:</strong> {savedPatient.payAmount}</p>
                 <p><strong>Sample Required:</strong> {savedPatient.sampleRequiered ? "Yes" : "No"}</p>
               </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handlePrint}>Print</Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSend}>Send</Button>
-                <Button className="bg-gray-400 hover:bg-gray-500 text-white" onClick={() => setShowModal(false)}>Close</Button>
+              <div className="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
+                <Button className="bg-green-600 text-white hover:bg-green-700" onClick={handlePrint}>Print</Button>
+                <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleSend}>Send</Button>
+                <Button className="bg-slate-300 text-slate-800 hover:bg-slate-400" onClick={() => setShowModal(false)}>Close</Button>
               </div>
             </div>
           </div>

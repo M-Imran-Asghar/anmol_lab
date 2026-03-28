@@ -36,12 +36,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, JWT_SECRET, {
       expiresIn: "24h",
     });
 
     const response = NextResponse.json(
-      { message: "User logged in successfully" },
+      { message: "User logged in successfully", isAdmin: user.isAdmin },
       { status: 200 }
     );
 
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       sameSite: "strict",
       secure: process.env.NODE_ENV === "production",
+      path: "/",
       expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 

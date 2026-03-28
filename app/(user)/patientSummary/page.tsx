@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react";
-import { Calendar, User, Phone, Mail, FileText } from "lucide-react";
+import PatientReportModal from "@/app/components/ui/patientReportModal";
+import { Calendar, User, Phone, Mail, FileText, Eye } from "lucide-react";
 
 interface Patient {
   _id: string;
@@ -27,6 +28,7 @@ export default function SummaryPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [reportPatient, setReportPatient] = useState<Patient | null>(null);
 
   const handleSearch = async () => {
     setLoading(true);
@@ -52,11 +54,11 @@ export default function SummaryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-purple-50 to-indigo-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="app-page">
+      <div className="mx-auto max-w-7xl">
         {/* Search Form */}
-        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm mb-8">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 pb-2 border-b border-slate-100">Generate Patient Summary Report</h2>
+        <div className="page-card page-accent mb-8 p-6 sm:p-8">
+          <h2 className="mb-6 border-b border-slate-100 pb-3 text-xl font-black text-slate-800">Generate Patient Summary Report</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <div className="flex flex-col gap-2">
@@ -65,7 +67,7 @@ export default function SummaryPage() {
                 type="date" 
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-11 px-4 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                className="soft-input h-12 px-4"
               />
             </div>
             
@@ -75,7 +77,7 @@ export default function SummaryPage() {
                 type="date" 
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 px-4 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                className="soft-input h-12 px-4"
               />
             </div>
           </div>
@@ -84,7 +86,7 @@ export default function SummaryPage() {
              <button 
                onClick={handleSearch}
                disabled={loading}
-               className="bg-purple-600 text-white px-8 py-2.5 text-sm font-bold rounded-lg shadow hover:bg-purple-700 hover:shadow-md transition-all duration-200 transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
+               className="inline-flex items-center gap-2 rounded-2xl bg-linear-to-r from-violet-600 to-indigo-600 px-8 py-3 text-sm font-bold text-white shadow-[0_18px_45px_rgba(79,70,229,0.24)] hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50"
              >
                <Calendar className="h-4 w-4" />
                {loading ? 'Searching...' : 'Run Summary'}
@@ -95,7 +97,7 @@ export default function SummaryPage() {
         {/* Summary Stats */}
         {patients.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-xl shadow-sm border">
+            <div className="page-card p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-blue-100 rounded-lg">
                   <User className="w-6 h-6 text-blue-600" />
@@ -107,7 +109,7 @@ export default function SummaryPage() {
               </div>
             </div>
             
-            <div className="bg-white p-6 rounded-xl shadow-sm border">
+            <div className="page-card p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-green-100 rounded-lg">
                   <FileText className="w-6 h-6 text-green-600" />
@@ -119,7 +121,7 @@ export default function SummaryPage() {
               </div>
             </div>
             
-            <div className="bg-white p-6 rounded-xl shadow-sm border">
+            <div className="page-card p-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-purple-100 rounded-lg">
                   <Calendar className="w-6 h-6 text-purple-600" />
@@ -135,13 +137,13 @@ export default function SummaryPage() {
 
         {/* Patient Details Table */}
         {patients.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="p-6 border-b">
-              <h3 className="text-xl font-bold text-gray-800">Patient Details</h3>
+          <div className="page-card overflow-hidden">
+            <div className="border-b p-6">
+              <h3 className="text-xl font-black text-gray-800">Patient Details</h3>
               <p className="text-gray-600">Showing {patients.length} patients from {new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}</p>
             </div>
             
-            <div className="overflow-x-auto">
+            <div className="table-shell overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -152,11 +154,12 @@ export default function SummaryPage() {
                     <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Amount</th>
                     <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Status</th>
                     <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Date</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {patients.map((patient) => (
-                    <tr key={patient._id} className="hover:bg-gray-50">
+                    <tr key={patient._id} className="hover:bg-violet-50/30">
                       <td className="py-4 px-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                           {patient.patientId || patient._id.slice(-6)}
@@ -198,6 +201,20 @@ export default function SummaryPage() {
                           {new Date(patient.createdAt).toLocaleDateString()}
                         </span>
                       </td>
+                      <td className="py-4 px-4">
+                        {patient.status === "Verified" ? (
+                          <button
+                            type="button"
+                            onClick={() => setReportPatient(patient)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-violet-100 px-3 py-2 text-sm font-semibold text-violet-700 transition-colors hover:bg-violet-200"
+                          >
+                            <Eye className="h-4 w-4" />
+                            View
+                          </button>
+                        ) : (
+                          <span className="text-sm text-gray-400">Pending</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -208,11 +225,18 @@ export default function SummaryPage() {
 
         {/* No Results */}
         {!loading && patients.length === 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+          <div className="page-card p-12 text-center">
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No patients found</h3>
             <p className="text-gray-600">Try adjusting your date range to find patients.</p>
           </div>
+        )}
+        {reportPatient && (
+          <PatientReportModal
+            patientId={reportPatient.patientId || 0}
+            patientName={reportPatient.patientname}
+            onClose={() => setReportPatient(null)}
+          />
         )}
       </div>
     </div>

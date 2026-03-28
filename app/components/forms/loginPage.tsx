@@ -2,7 +2,6 @@
 import { useState } from "react";
 import Button from "../ui/button";
 import Input from "../ui/input";
-import { useRouter } from "next/navigation";
 
 
 
@@ -17,7 +16,7 @@ type Errors = {
 };
 
 const LoginPage = () => {
-  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<formData>({
     email: "",
     password: "",
@@ -30,6 +29,7 @@ const LoginPage = () => {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     const newErrors: Errors = {
       email: "",
@@ -37,7 +37,7 @@ const LoginPage = () => {
     };
 
     if (formData.email.trim() === "") {
-      newErrors.email = "Name is required";
+      newErrors.email = "Email is required";
     }
 
     if (formData.password.trim() === "") {
@@ -47,39 +47,40 @@ const LoginPage = () => {
     setErrors(newErrors);
 
     if (newErrors.email || newErrors.password) {
+      setIsLoading(false);
       return;
     }
 
     try {
-
       const response = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: formData.email,
-        password: formData.password,
+          password: formData.password,
         }),
-      })
+      });
 
-      const data =await  response.json()
-      console.log(data)
+      const data = await response.json();
+      console.log("Login response:", data, "Status:", response.status);
 
       if (!response.ok) {
-      throw new Error(data.message || "Login failed");
-    }
+        alert(data.message || "Login failed");
+        setIsLoading(false);
+        return;
+      }
 
- 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-    }
-
-    
-    router.push("/todayPage");
+      // Success - redirect to todayPage
+      console.log("Login successful, redirecting to /todayPage...");
+      window.location.href = "/todayPage";
       
     } catch (error) {
       console.error("Login error:", error);
+      alert("Login failed. Please try again.");
+      setIsLoading(false);
     }
   };
 
@@ -99,63 +100,94 @@ const LoginPage = () => {
 
 
   return (
-    <div className="flex justify-center items-center bg-linear-to-br
- from-purple-200 to-purple-400 px-4 py-4 ">
-      <form
-        onSubmit={onSubmit}
-        className="flex flex-col gap-6 bg-white/70 backdrop-blur-md w-full max-w-md py-10 px-8 rounded-2xl shadow-xl shadow-purple-600/20 border border-white/30"
-      >
-        {/* Header */}
-        <div className="bg-purple-600 rounded-xl py-4 shadow-md shadow-purple-800/30">
-          <h1 className="font-bold text-2xl text-center text-white tracking-wide">
-            Alflah Laboratory
-          </h1>
+    <div className="flex min-h-screen items-center justify-center px-4 py-8">
+      <div className="page-card page-accent grid w-full max-w-5xl overflow-hidden rounded-[2rem] lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="relative hidden overflow-hidden bg-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
+          <div className="space-y-5">
+            <span className="inline-flex w-fit rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.3em] text-violet-100">
+              Alflah Laboratory
+            </span>
+            <div className="space-y-4">
+              <h1 className="max-w-md text-4xl font-black leading-tight">
+                Faster lab work, clearer reports, smoother daily operations.
+              </h1>
+              <p className="max-w-md text-base leading-7 text-slate-300">
+                Manage registrations, verification, records, and patient reports from one clean workspace built for busy lab teams.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-3xl border border-white/10 bg-white/6 p-5">
+              <p className="text-3xl font-black">All-in-one</p>
+              <p className="mt-2 text-sm text-slate-300">Registration, verification, summary, and printable reports.</p>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/6 p-5">
+              <p className="text-3xl font-black">Responsive</p>
+              <p className="mt-2 text-sm text-slate-300">Comfortable on desktop, tablet, and smaller mobile screens.</p>
+            </div>
+          </div>
         </div>
 
-        {/* Name Input */}
-        <div className="flex flex-col gap-1">
-          <label className="font-medium text-gray-700">Email</label>
-          <Input
-            value={formData.email}
-            name="email"
-            onChange={handleInput}
-            type="email"
-            placeholder="Enter your name"
-            className="w-full bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-          />
-          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
-        </div>
-
-        {/* Password Input */}
-        <div className="flex flex-col gap-1">
-          <label className="font-medium text-gray-700">Password</label>
-          <Input
-            value={formData.password}
-            name="password"
-            onChange={handleInput}
-            type="password"
-            placeholder="Enter your password"
-            className="w-full bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-          />
-          {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
-        </div>
-
-        {/* Button */}
-        <Button
-          type="submit"
-          className="w-full border-gray-400 text-purple-700 font-semibold hover:bg-purple-600 hover:text-white py-3 transition-all duration-200 shadow-sm hover:shadow-md rounded-lg"
+        <form
+          onSubmit={onSubmit}
+          className="flex flex-col justify-center gap-6 px-6 py-8 sm:px-8 md:px-10 lg:px-12"
         >
-          Login
-        </Button>
+          <div className="space-y-3">
+            <span className="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.25em] text-violet-700 lg:hidden">
+              Alflah Laboratory
+            </span>
+            <h2 className="text-3xl font-black text-slate-900">Welcome back</h2>
+            <p className="max-w-md text-sm leading-6 text-slate-500">
+              Sign in to continue managing patient workflows, reports, and lab records.
+            </p>
+          </div>
 
-        {/* Footer */}
-        <p className="text-center text-gray-600 text-sm">
-          Forgot your password?{" "}
-          <span className="text-purple-700 font-medium hover:underline cursor-pointer">
-            Click here
-          </span>
-        </p>
-      </form>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-slate-700">Email</label>
+            <Input
+              value={formData.email}
+              name="email"
+              onChange={handleInput}
+              type="email"
+              placeholder="Enter your email"
+            />
+            {errors.email && <p className="text-sm font-medium text-rose-500">{errors.email}</p>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-semibold text-slate-700">Password</label>
+            <Input
+              value={formData.password}
+              name="password"
+              onChange={handleInput}
+              type="password"
+              placeholder="Enter your password"
+            />
+            {errors.password && <p className="text-sm font-medium text-rose-500">{errors.password}</p>}
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full rounded-2xl bg-linear-to-r from-violet-600 to-indigo-600 py-3.5 text-white shadow-[0_18px_45px_rgba(79,70,229,0.24)] hover:from-violet-700 hover:to-indigo-700"
+          >
+            {isLoading ? (
+              <>
+                <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                Logging in...
+              </>
+            ) : "Login"}
+          </Button>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-500">
+            Forgot your password?{" "}
+            <span className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4">
+              Contact the administrator
+            </span>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

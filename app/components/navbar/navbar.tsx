@@ -1,12 +1,55 @@
 "use client";
 
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { FlaskConical, LogOut, Menu, Shield, X } from "lucide-react";
 
 const Navbar = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
+
+  const checkAdminStatus = async () => {
+    try {
+      const response = await fetch("/api/auth/me");
+      if (response.ok) {
+        const data = await response.json();
+        setIsAdmin(data.isAdmin);
+      }
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+      if (response.ok) {
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const menuItems = [
+    { label: "Today", path: "/todayPage" },
     { label: "Patient Registration", path: "/patientRegistration" },
     { label: "Patient Record", path: "/patientRecord" },
     { label: "Patient Summary", path: "/patientSummary" },
@@ -14,43 +57,80 @@ const Navbar = () => {
   ];
 
   return (
-    <div className="backdrop-blur-md bg-black/80 text-white m-4 p-4 rounded-2xl border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.15)]">
-      <div className="flex justify-between items-center">
+    <header className="sticky top-0 z-30 px-3 pt-3 md:px-4">
+      <div className="page-card page-accent overflow-hidden rounded-[1.75rem]">
+        <div className="relative flex flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6">
+          <button
+            type="button"
+            onClick={() => router.push("/todayPage")}
+            className="group flex items-center gap-3 rounded-2xl bg-slate-950 px-4 py-3 text-left text-white shadow-[0_18px_45px_rgba(15,23,42,0.18)]"
+          >
+            <div className="rounded-2xl bg-white/10 p-2.5 transition-transform duration-200 group-hover:scale-105">
+              <FlaskConical className="h-5 w-5 text-violet-200" />
+            </div>
+            <div>
+              <p className="text-lg font-black tracking-wide md:text-xl">Alflah Lab</p>
+              <p className="text-xs text-slate-300 md:text-sm">Diagnostic workspace</p>
+            </div>
+          </button>
 
-        {/* Logo */}
-        <h1 className="bg-purple-600 text-white text-3xl font-bold px-4 py-2 rounded-xl shadow-xl
-          hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 cursor-pointer"
-        >
-          Alflah Lab
-        </h1>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/80 p-3 text-slate-700 shadow-sm md:hidden"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            aria-label="Toggle navigation"
+          >
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
 
-        {/* Menu */}
-        <ul className="flex justify-around items-center gap-6 mx-4 text-lg">
-          {menuItems.map((item, index) => {
-            const isActive = pathname === item.path;
+          <div className={`${isMenuOpen ? "flex" : "hidden"} w-full flex-col gap-4 md:flex md:w-auto md:flex-row md:items-center md:gap-3`}>
+            <nav className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap md:items-center">
+              {menuItems.map((item) => {
+                const isActive = pathname === item.path;
 
-            return (
-              <li key={index}>
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    onClick={() => router.push(item.path)}
+                    className={`rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 md:text-[15px] ${
+                      isActive
+                        ? "bg-violet-600 text-white shadow-[0_12px_30px_rgba(124,58,237,0.28)]"
+                        : "bg-white/70 text-slate-700 hover:bg-white hover:text-violet-700"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="flex flex-col gap-2 md:flex-row">
+              {isAdmin && (
                 <button
-                  onClick={() => redirect(item.path)}
-                  className={`
-                    relative cursor-pointer transition-all duration-300 px-1 
-                    ${isActive ? "text-purple-400" : "text-white hover:text-purple-400"}
-
-                    after:content-[''] after:absolute after:left-0 after:-bottom-1 
-                    after:h-0.5 after:bg-purple-600 after:transition-all after:duration-200 
-                    ${isActive ? "after:w-full" : "after:w-0 hover:after:w-full"}
-                  `}
+                  type="button"
+                  onClick={() => router.push("/admin/users")}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-100 px-4 py-2.5 font-semibold text-amber-900 transition-colors hover:bg-amber-200"
                 >
-                  {item.label}
+                  <Shield className="h-4 w-4" />
+                  Admin Panel
                 </button>
-              </li>
-            );
-          })}
-        </ul>
+              )}
 
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2.5 font-semibold text-white shadow-[0_12px_30px_rgba(225,29,72,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-rose-700 disabled:translate-y-0"
+              >
+                <LogOut className="h-4 w-4" />
+                {isLoggingOut ? "Logging out..." : "Logout"}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </header>
   );
 };
 

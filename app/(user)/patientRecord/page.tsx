@@ -2,7 +2,9 @@
 import { useState, useEffect, useCallback } from "react";
 import Button from "@/app/components/ui/button";
 import Input from "@/app/components/ui/input";
-import { User, IdCard, Mail, Phone, Stethoscope, Calendar, Search, Printer, Download } from "lucide-react";
+import PatientReportModal from "@/app/components/ui/patientReportModal";
+import { downloadPatientReport, printPatientReport } from "@/app/lib/patientReportActions";
+import { User, IdCard, Mail, Phone, Stethoscope, Calendar, Search, Printer, Download, Eye } from "lucide-react";
 
 interface Patient {
   _id: string;
@@ -29,6 +31,7 @@ const PatientRecord: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reportPatient, setReportPatient] = useState<Patient | null>(null);
 
   // Wrap fetchPatients in useCallback to prevent unnecessary re-renders
   const fetchPatients = useCallback(async () => {
@@ -42,6 +45,7 @@ const PatientRecord: React.FC = () => {
       if (filters.doctor) params.append('doctor', filters.doctor);
       if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
       if (filters.dateTo) params.append('dateTo', filters.dateTo);
+      params.append('limit', '1000');
       
       const response = await fetch(`/api/patient/patientRegistration?${params}`);
       const data = await response.json();
@@ -73,49 +77,19 @@ const PatientRecord: React.FC = () => {
 
   const downloadPDF = async (patientId: number) => {
     try {
-      const response = await fetch(`/api/patient/pdf?patientId=${patientId}`);
-      if (!response.ok) {
-        const error = await response.json();
-        alert(error.message || 'Failed to generate PDF');
-        return;
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `lab_report_${patientId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      await downloadPatientReport(patientId);
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      alert('Error downloading PDF');
+      alert(error instanceof Error ? error.message : 'Error downloading PDF');
     }
   };
 
   const printReport = async (patientId: number) => {
     try {
-      const response = await fetch(`/api/patient/pdf?patientId=${patientId}`);
-      if (!response.ok) {
-        const error = await response.json();
-        alert(error.message || 'Failed to generate PDF');
-        return;
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const printWindow = window.open(url, '_blank');
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
-      window.URL.revokeObjectURL(url);
+      await printPatientReport(patientId);
     } catch (error) {
       console.error('Error printing PDF:', error);
-      alert('Error printing PDF');
+      alert(error instanceof Error ? error.message : 'Error printing PDF');
     }
   };
 
@@ -136,14 +110,14 @@ const PatientRecord: React.FC = () => {
   };
 
   return (
-    <div className="flex justify-center items-center bg-linear-to-br from-purple-200 to-purple-400 py-6 px-4 rounded">
-      <div className="bg-white p-10 rounded-xl shadow-xl w-full max-w-6xl">
-        <h2 className="text-3xl font-bold mb-6 text-purple-700 text-center">
+    <div className="app-page">
+      <div className="page-card page-accent mx-auto w-full max-w-7xl rounded-[2rem] p-5 sm:p-8">
+        <h2 className="mb-6 text-center text-3xl font-black text-violet-700 sm:text-4xl">
           Patient Record
         </h2>
 
         {/* Search Form - All Fields Visible */}
-        <form onSubmit={handleSearch} className="space-y-4">
+        <form onSubmit={handleSearch} className="page-card mb-8 space-y-4 rounded-[1.5rem] p-5 sm:p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Name Search */}
             <div>
@@ -157,7 +131,7 @@ const PatientRecord: React.FC = () => {
                   placeholder="Search by patient name..."
                   value={filters.name}
                   onChange={(e) => handleFilterChange('name', e.target.value)}
-                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -174,7 +148,7 @@ const PatientRecord: React.FC = () => {
                   placeholder="Enter CNIC"
                   value={filters.cnic}
                   onChange={(e) => handleFilterChange('cnic', e.target.value)}
-                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -191,7 +165,7 @@ const PatientRecord: React.FC = () => {
                   placeholder="Enter email"
                   value={filters.email}
                   onChange={(e) => handleFilterChange('email', e.target.value)}
-                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -208,7 +182,7 @@ const PatientRecord: React.FC = () => {
                   placeholder="Enter phone number"
                   value={filters.mobile}
                   onChange={(e) => handleFilterChange('mobile', e.target.value)}
-                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -225,7 +199,7 @@ const PatientRecord: React.FC = () => {
                   placeholder="Enter doctor name"
                   value={filters.doctor}
                   onChange={(e) => handleFilterChange('doctor', e.target.value)}
-                  className="pl-10 w-full border-gray-300 focus:border-purple-500"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -241,7 +215,7 @@ const PatientRecord: React.FC = () => {
                   type="date"
                   value={filters.dateFrom}
                   onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                  className="pl-10 w-full border border-gray-300 rounded-lg p-2 focus:border-purple-500 focus:ring-purple-500 outline-none"
+                  className="soft-input pl-10 w-full px-4 py-3"
                 />
               </div>
             </div>
@@ -257,18 +231,18 @@ const PatientRecord: React.FC = () => {
                   type="date"
                   value={filters.dateTo}
                   onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                  className="pl-10 w-full border border-gray-300 rounded-lg p-2 focus:border-purple-500 focus:ring-purple-500 outline-none"
+                  className="soft-input pl-10 w-full px-4 py-3"
                 />
               </div>
             </div>
           </div>
 
           {/* Search and Clear Buttons */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col gap-3 pt-4 sm:flex-row">
             <Button
               type="submit"
               disabled={isSearching}
-              className="flex-1 flex items-center justify-center gap-2 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all duration-300 disabled:opacity-50"
+              className="flex-1 bg-linear-to-r from-violet-600 to-indigo-600 py-3 text-white hover:from-violet-700 hover:to-indigo-700"
             >
               <Search className="w-5 h-5" />
               {isSearching ? 'Searching...' : 'Search Patients'}
@@ -276,7 +250,7 @@ const PatientRecord: React.FC = () => {
             <Button
               type="button"
               onClick={handleClearFilters}
-              className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 rounded-lg transition-all duration-300"
+              className="flex-1 border border-slate-200 bg-white py-3 text-slate-700 hover:bg-slate-50"
             >
               Clear All Filters
             </Button>
@@ -285,21 +259,31 @@ const PatientRecord: React.FC = () => {
 
         {/* Patient Table */}
         <div className="mt-8">
-          <h3 className="text-xl font-semibold mb-4 text-gray-800">Patient Records</h3>
+          <h3 className="mb-4 text-xl font-black text-slate-800">Patient Records</h3>
           
           {loading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-              <p className="mt-2 text-gray-600">Loading patients...</p>
+            <div className="space-y-4 rounded-[1.5rem] bg-white/50 p-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="loading-card flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-2">
+                    <div className="shimmer h-4 w-20 rounded-full" />
+                    <div className="shimmer h-5 w-44 rounded-full" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:flex">
+                    <div className="shimmer h-10 w-24 rounded-xl" />
+                    <div className="shimmer h-10 w-24 rounded-xl" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : patients.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-white/60 py-10 text-center text-slate-500">
               No patients found
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="table-shell overflow-x-auto">
               <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                <thead className="bg-purple-50">
+                <thead className="bg-violet-50/80">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -314,7 +298,7 @@ const PatientRecord: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {patients.map((patient) => (
-                    <tr key={patient._id} className="hover:bg-gray-50">
+                    <tr key={patient._id} className="hover:bg-violet-50/30">
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {patient.patientId}
                       </td>
@@ -347,7 +331,13 @@ const PatientRecord: React.FC = () => {
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {patient.status === 'Verified' && (
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              onClick={() => setReportPatient(patient)}
+                              className="px-2 py-1 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded transition-all text-xs"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
                             <Button
                               onClick={() => printReport(patient.patientId)}
                               className="px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded transition-all text-xs"
@@ -371,6 +361,13 @@ const PatientRecord: React.FC = () => {
           )}
         </div>
       </div>
+      {reportPatient && (
+        <PatientReportModal
+          patientId={reportPatient.patientId}
+          patientName={reportPatient.patientname}
+          onClose={() => setReportPatient(null)}
+        />
+      )}
     </div>
   );
 };

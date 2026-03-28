@@ -6,27 +6,12 @@ import Counter from "@/models/counter";
 import { generatePatientReport } from "@/lib/puppeteerGenerator";
 import { uploadPDF } from "@/lib/cloudinary";
 
-// Define interfaces for better type safety
-interface QueryConditions {
-  [key: string]: unknown;
-  $or?: Array<Record<string, unknown>>;
-  $and?: QueryConditions[];
-  createdAt?: {
-    $gte?: Date;
-    $lte?: Date;
-  };
-  patientname?: { $regex: string; $options: string };
-  cnic?: { $regex: string; $options: string };
-  patientEmail?: { $regex: string; $options: string };
-  doctorName?: { $regex: string; $options: string };
-  patientMobile?: { $regex: string; $options: string };
-  status?: string | { $exists: boolean } | null;
-}
-
 interface TestResult {
+  parentTestName?: string;
   testName: string;
+  unit?: string;
   result: string;
-  referenceRange: string;
+  referenceRange?: string;
   notes: string;
   date: Date;
 }
@@ -57,6 +42,16 @@ interface UpdateData {
   status?: string;
   reportPDF?: string;
   reportFileName?: string;
+}
+
+interface PatientUpdateResponse {
+  message: string;
+  patient: ReturnType<typeof PatientRegistration["prototype"]["toObject"]>;
+  pdfInfo?: {
+    downloadUrl: string;
+    fileName: string;
+    generatedAt: string;
+  };
 }
 
 // Helper function to verify JWT token
@@ -285,9 +280,11 @@ export async function PUT(request: NextRequest) {
     if (hasTestResults) {
       // Add multiple test results
       updateData.testResults = testResults.map((test: TestResult) => ({
+        parentTestName: test.parentTestName,
         testName: test.testName,
+        unit: test.unit || "",
         result: test.result,
-        referenceRange: test.referenceRange,
+        referenceRange: test.referenceRange || "",
         notes: test.notes || "",
         date: new Date()
       }));
@@ -360,7 +357,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 9️⃣ Prepare response
-    const response: any = {
+    const response: PatientUpdateResponse = {
       message: hasTestResults || hasLegacyTestResult
         ? "Patient test results added and status updated to Verified" 
         : "Patient details updated successfully",
@@ -496,8 +493,8 @@ async function handlePatientSearch(request: NextRequest): Promise<NextResponse> 
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '10');
   
-  const query: QueryConditions = {};
-  const andConditions: QueryConditions[] = [];
+  const query: Record<string, unknown> = {};
+  const andConditions: Array<Record<string, unknown>> = [];
   
   // Filter by status if provided
   if (status.trim()) {
@@ -551,17 +548,18 @@ async function handlePatientSearch(request: NextRequest): Promise<NextResponse> 
   
   // Date range filtering
   if (dateFrom || dateTo) {
-    query.createdAt = {};
+    const createdAtFilter: { $gte?: Date; $lte?: Date } = {};
     if (dateFrom) {
       const fromDate = new Date(dateFrom);
       fromDate.setHours(0, 0, 0, 0);
-      query.createdAt.$gte = fromDate;
+      createdAtFilter.$gte = fromDate;
     }
     if (dateTo) {
       const toDate = new Date(dateTo);
       toDate.setHours(23, 59, 59, 999);
-      query.createdAt.$lte = toDate;
+      createdAtFilter.$lte = toDate;
     }
+    query.createdAt = createdAtFilter;
   }
   
   // Combine all conditions

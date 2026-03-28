@@ -13,13 +13,15 @@ export interface PatientData {
   patientMobile: number;
   doctorName: string;
   patientAddress?: string;
-  testName?: string;
+  testName?: string | string[];
   testResults?: Array<{
+    parentTestName?: string;
     testName: string;
+    unit?: string;
     result: string;
-    referenceRange: string;
-    notes: string;
-    date: Date;
+    referenceRange?: string;
+    notes?: string;
+    date?: Date;
   }>;
   receptionsName?: string;
   createdAt: Date;
@@ -146,8 +148,8 @@ export class AdvancedPDFGenerator {
 
     if (patient.testResults && patient.testResults.length > 0) {
       // Table header
-      const headers = ['Test Name', 'Result', 'Reference Range', 'Notes'];
-      const columnWidths = [180, 100, 140, 140];
+      const headers = ['Test Name', 'Unit', 'Result', 'Reference Range', 'Notes'];
+      const columnWidths = [150, 70, 90, 120, 120];
       const rowHeight = 25;
 
       // Draw table header
@@ -167,7 +169,7 @@ export class AdvancedPDFGenerator {
         x = 50;
         const bgColor = index % 2 === 0 ? '#f8f9fa' : 'white';
         
-        [test.testName, test.result, test.referenceRange, test.notes || ''].forEach((cell, i) => {
+        [test.testName, test.unit || '', test.result, test.referenceRange || '', test.notes || ''].forEach((cell, i) => {
           this.doc.rect(x, this.doc.y, columnWidths[i], rowHeight).fillAndStroke(bgColor, '#ddd');
           this.doc.fillColor('black').text(cell, x + 5, this.doc.y + 8, { width: columnWidths[i] - 10, align: 'left' });
           x += columnWidths[i];
