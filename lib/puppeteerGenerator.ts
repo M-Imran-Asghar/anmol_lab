@@ -1,14 +1,33 @@
 import puppeteer, { Browser } from "puppeteer";
 import { PatientData } from "./pdfGenerator";
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 
-const logoPath = path.join(process.cwd(), "public/logo/appLogo.png");
-const logoBase64 = fs.readFileSync(logoPath).toString("base64");
-const pdfHeader = path.join(process.cwd(), "public/logo/alflahPdfHeader.png");
-const pdfHeaderBase64 = fs.readFileSync(pdfHeader).toString("base64");
-const pdfFooter = path.join(process.cwd(), "public/logo/alfahlPdfFooter.png");
-const pdfFooterBase64 = fs.readFileSync(pdfFooter).toString("base64");
+interface ReportAssets {
+  logoBase64: string;
+  pdfHeaderBase64: string;
+  pdfFooterBase64: string;
+}
+
+async function loadAssetBase64(fileName: string): Promise<string> {
+  const filePath = path.join(process.cwd(), "public", "logo", fileName);
+  const fileBuffer = await fs.readFile(filePath);
+  return fileBuffer.toString("base64");
+}
+
+async function loadReportAssets(): Promise<ReportAssets> {
+  const [logoBase64, pdfHeaderBase64, pdfFooterBase64] = await Promise.all([
+    loadAssetBase64("appLogo.png"),
+    loadAssetBase64("alflahPdfHeader.PNG"),
+    loadAssetBase64("alfahlPdfFooter.PNG"),
+  ]);
+
+  return {
+    logoBase64,
+    pdfHeaderBase64,
+    pdfFooterBase64,
+  };
+}
 
 export async function generatePatientReport(
   patient: PatientData,
@@ -16,13 +35,14 @@ export async function generatePatientReport(
   let browser: Browser | null = null;
 
   try {
+    const assets = await loadReportAssets();
     browser = await puppeteer.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
-    await page.setContent(generateHTMLReport(patient), {
+    await page.setContent(generateHTMLReport(patient, assets), {
       waitUntil: "networkidle0",
     });
 
@@ -161,7 +181,7 @@ function buildResultSections(patient: PatientData): string {
     .join("");
 }
 
-function generateHTMLReport(patient: PatientData): string {
+function generateHTMLReport(patient: PatientData, assets: ReportAssets): string {
   const reportedAt = patient.updatedAt || Date.now();
   const collectedAt = patient.createdAt || Date.now();
   const reportDate = formatReportDate(reportedAt);
@@ -393,14 +413,14 @@ function generateHTMLReport(patient: PatientData): string {
         <div class="header-left">
           <img 
             class="header-img"
-            src="data:image/png;base64,${pdfHeaderBase64}" 
+            src="data:image/png;base64,${assets.pdfHeaderBase64}" 
             alt="Al-Falah Header"
           />
         </div>
         <div class="header-right">
           <img 
             class="header-img"
-            src="data:image/png;base64,${logoBase64}" 
+            src="data:image/png;base64,${assets.logoBase64}" 
             alt="Al-Falah Logo"
           />
         </div>
@@ -457,7 +477,7 @@ function generateHTMLReport(patient: PatientData): string {
 
       <div class="footer">
         <img class="footer-img"
-          src="data:image/png;base64,${pdfFooterBase64}" 
+          src="data:image/png;base64,${assets.pdfFooterBase64}" 
           alt="Al-Falah Footer"
         />
       </div>
