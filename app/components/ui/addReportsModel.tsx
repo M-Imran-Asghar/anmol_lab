@@ -33,6 +33,7 @@ const AddReportsModel: React.FC<AddReportsModelProps> = ({onClose, patientId, te
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [reportPatientName, setReportPatientName] = useState<string | undefined>();
 
   useEffect(() => {
     const buildTestResults = async () => {
@@ -124,24 +125,29 @@ const AddReportsModel: React.FC<AddReportsModelProps> = ({onClose, patientId, te
         },
         body: JSON.stringify({
           patientId,
-          testResults: filledResults
+          testResults: filledResults,
+          generatePDF: true,
         })
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
-        if (data.patient?.reportPDF) {
+        const reportReady = Boolean(data.pdfInfo?.downloadUrl || data.patient?.reportPDF);
+
+        if (reportReady) {
+          setReportPatientName(data.patient?.patientname);
           setShowReportModal(true);
         } else {
           alert('Test results added successfully, but PDF report is not available yet.');
           onClose();
         }
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.message}`);
+        alert(`Error: ${data.message || "Failed to save test results"}`);
       }
     } catch (error) {
       console.error('Failed to save test results', error);
+      alert('Failed to save test results');
     } finally {
       setLoading(false);
     }
@@ -151,6 +157,7 @@ const AddReportsModel: React.FC<AddReportsModelProps> = ({onClose, patientId, te
     return (
       <PatientReportModal
         patientId={patientId}
+        patientName={reportPatientName}
         onClose={onClose}
       />
     );
