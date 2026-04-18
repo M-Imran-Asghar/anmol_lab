@@ -55,6 +55,31 @@ export async function GET(request: NextRequest) {
         .replace(/_+/g, "_")
         .replace(/^_|_$/g, "")}_report.pdf`;
 
+    if (/^https?:\/\//i.test(String(patient.reportPDF))) {
+      const remoteResponse = await fetch(String(patient.reportPDF), {
+        cache: "no-store",
+      });
+
+      if (!remoteResponse.ok) {
+        return NextResponse.json(
+          { message: "Unable to fetch remote report PDF" },
+          { status: 502 },
+        );
+      }
+
+      const pdfBuffer = Buffer.from(await remoteResponse.arrayBuffer());
+
+      return new NextResponse(pdfBuffer, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Length": String(pdfBuffer.length),
+          "Content-Disposition": `${disposition}; filename="${reportFileName}"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
     const pdfRelativePath = String(patient.reportPDF).replace(/^\/+/, "");
     const pdfAbsolutePath = path.join(process.cwd(), "public", pdfRelativePath);
     const reportsRoot = path.join(process.cwd(), "public", "reports");
